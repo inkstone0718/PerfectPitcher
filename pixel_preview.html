@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Pixel Art Preview</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#0a0a0a;color:#f0ece0;font-family:'Press Start 2P',monospace;display:flex;flex-direction:column;align-items:center;padding:20px;gap:20px}
+h1{font-size:14px;margin-bottom:10px}
+.row{display:flex;gap:30px;flex-wrap:wrap;justify-content:center}
+.card{background:#1a1a24;border:2px solid #2a2a3a;padding:20px;text-align:center;border-radius:4px}
+.card h3{font-size:10px;margin-bottom:10px;color:#f5851f}
+canvas{image-rendering:pixelated;border:1px solid #2a2a3a}
+/* Character-specific breathing animations */
+.pitcher-breathe{animation:pitcherBreathe 2.5s ease-in-out infinite}
+.batter-breathe{animation:batterBreathe 2.5s ease-in-out infinite}
+.catcher-breathe{animation:catcherBreathe 2.5s ease-in-out infinite}
+.umpire-breathe{animation:umpireBreathe 2.5s ease-in-out infinite}
+
+@keyframes pitcherBreathe{0%,100%{transform:scaleY(1.0);filter:brightness(1.0)}50%{transform:scaleY(1.05);filter:brightness(1.1)}}
+@keyframes batterBreathe{0%,100%{transform:scaleY(1.0) translateX(0)}50%{transform:scaleY(1.03) translateX(-1px)}}
+@keyframes catcherBreathe{0%,100%{transform:scaleY(1.0) rotate(0deg)}50%{transform:scaleY(1.04) rotate(-1deg)}}
+@keyframes umpireBreathe{0%,100%{transform:scaleY(1.0);filter:brightness(1.0)}50%{transform:scaleY(1.06);filter:brightness(1.08)}}
+button{font-family:inherit;font-size:9px;padding:8px 16px;cursor:pointer;background:#1a56e8;color:#f0ece0;border:2px solid #f0ece0;margin:5px}
+button:hover{background:#f5851f}
+.scene{background:#1a1a24;border:2px solid #2a2a3a;padding:20px;width:100%;max-width:700px;position:relative;height:200px;overflow:hidden}
+#resultText{position:absolute;top:30px;left:50%;transform:translateX(-50%) scale(0);font-size:16px;font-weight:bold;z-index:10;transition:transform 0.3s cubic-bezier(0.175,0.885,0.32,1.275)}
+</style></head><body>
+<h1>⚾ PerfectPitcher Pixel Art Preview</h1>
+<div class="row">
+  <div class="card"><h3>PITCHER</h3><canvas id="pitcher" width="256" height="256" class="pitcher-breathe"></canvas></div>
+  <div class="card"><h3>PITCHING ANIM</h3><canvas id="pitchingAnim" width="256" height="256"></canvas></div>
+  <div class="card"><h3>BATTER</h3><canvas id="batter" width="256" height="256" class="batter-breathe" style="animation-delay:0.2s"></canvas></div>
+  <div class="card"><h3>CATCHER</h3><canvas id="catcher" width="256" height="256" class="catcher-breathe" style="animation-delay:0.4s"></canvas></div>
+  <div class="card"><h3>UMPIRE</h3><canvas id="umpire" width="256" height="256" class="umpire-breathe" style="animation-delay:0.6s"></canvas></div>
+</div>
+<div>
+  <button onclick="playPitching()">▶ Pitching Animation</button>
+  <button onclick="playStrike()">▶ Strike Animation</button>
+  <button onclick="playBall()">▶ Ball Animation</button>
+  <button onclick="resetScene()">↺ Reset</button>
+</div>
+<div class="scene" id="scene">
+  <div id="resultText"></div>
+  <canvas id="scenePitcher" width="128" height="128" style="position:absolute;left:30px;bottom:20px" class="pitcher-breathe"></canvas>
+  <canvas id="sceneBall" width="32" height="32" style="position:absolute;left:80px;bottom:60px;opacity:0;transition:all 0.4s linear"></canvas>
+  <canvas id="sceneBatter" width="128" height="128" style="position:absolute;right:160px;bottom:20px" class="batter-breathe" style="animation-delay:0.2s"></canvas>
+  <canvas id="sceneCatcher" width="96" height="96" style="position:absolute;right:80px;bottom:20px" class="catcher-breathe" style="animation-delay:0.4s"></canvas>
+  <canvas id="sceneUmpire" width="100" height="100" style="position:absolute;right:10px;bottom:20px" class="umpire-breathe" style="animation-delay:0.6s"></canvas>
+</div>
+<script>
+const C={
+  _:'transparent',b:'#0a0a0a',s:'#ffcda8',h:'#d99f77',m:'#c48860',
+  B:'#1a56e8',D:'#1040c0',N:'#0a2870',w:'#f0ece0',g:'#c8c8b8',
+  O:'#f5851f',E:'#c96a0a',F:'#7a3f00',R:'#8b4513',T:'#6b3410',
+  r:'#ef4444',G:'#22c55e',W:'#d0d0c0',k:'#333333',P:'#ffddbb',
+  L:'#aaa898',A:'#2a2a3a'
+};
+
+const PITCHER=[
+'________________________________',
+'________________________________',
+'____________DDDDDDD____________',
+'___________DDDDDDDDD___________',
+'___________DDDDDwwDDD___________',
+'__________bDDDDDwwDDDb__________',
+'__________bDDDDDDDDDDb__________',
+'_________bsssssssssssb__________',
+'_________bsPbsbsbPssb___________',
+'_________bsssssssssb____________',
+'__________bsshhhssb_____________',
+'__________bbmmmmbb______________',
+'_________BBBBBBBBBBBB___________',
+'________BwwBBBBBBBBwwB__________',
+'_______BwwwBBBBBBBBwwwB_________',
+'_______BwwBBBBBBBBBBwwB_________',
+'______BsswBBBBBBBBBBwssB________',
+'______BhswBBwwBBwwBBwshB________',
+'_______bwBBBBBBBBBBBBwb_________',
+'________bBBBBBBBBBBBBb__________',
+'________bwwwwwbbwwwwwb__________',
+'_______bwwwwwwbbwwwwwwb_________',
+'_______bwwLwwwbbwwwLwwb_________',
+'_______bwwwwwwbbwwwwwwb_________',
+'_______bwwwwwwbbwwwwwwb_________',
+'_______bwwwwwwbbwwwwwwb_________',
+'________bggggbbbbggggb__________',
+'________bbbbbbbbbbbbbbb_________',
+'________bbbb______bbbbb________',
+'________________________________',
+'________________________________',
+'________________________________',
+];
+
+const BATTER=[
+'________________________________',
+'_______RR_______________________',
+'_______RR_______________________',
+'_______RR_______________________',
+'_______RR_______________________',
+'_______RR___OOOOOOO_____________',
+'_______RR__OOOOOOOOO____________',
+'_______RR__OOOOwwOOO____________',
+'_______RTbbOOOOwwOOOb___________',
+'_______TbbOOOOOOOOOOb___________',
+'________bsssssssssssb___________',
+'________bsPbsbsbPssb____________',
+'________bsssssssssb_____________',
+'_________bsshhhssb______________',
+'_________bbmmmmbb_______________',
+'________OOOOOOOOOOOO____________',
+'_______OgwOOOOOOOOgwO___________',
+'______OgwwOOOOOOOOgwwO__________',
+'______OgwOOOOOOOOOOgwO__________',
+'_____OsswOOOOOOOOOOwssO_________',
+'_____OhswOOwwOOwwOOwshO_________',
+'______bwOOOOOOOOOOOOwb__________',
+'_______bOOOOOOOOOOOOb___________',
+'_______bwwwwwbbwwwwwb___________',
+'______bwwwwwwbbwwwwwwb__________',
+'______bwwLwwwbbwwwLwwb__________',
+'______bwwwwwwbbwwwwwwb__________',
+'_______bggggbbbbggggb___________',
+'_______bbbbbbbbbbbbbbb__________',
+'_______bbbb______bbbbb_________',
+'________________________________',
+'________________________________',
+];
+
+const CATCHER=[
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+'___________bbbbbbbbb____________',
+'__________bbkkkkkkkbb___________',
+'__________bkbwbwbwbkb___________',
+'__________bkkkkkkkkbb___________',
+'__________bkbwbwbwbkb___________',
+'__________bbkkkkkkkbb___________',
+'__________bbbbbbbbbb____________',
+'________OOOOOOOOOOOOOO__________',
+'_______OOOkkOOOOOOkkOOO_________',
+'______RRROOkkOOOOkkOOORR________',
+'______RRROOOOOOOOOOOORRb________',
+'_______ROOOOOOOOOOOOOOR_________',
+'________bOOOOOOOOOOOOb__________',
+'________bOOOOOOOOOOOOb__________',
+'______bwwwwb____bwwwwb__________',
+'_____bwwwwwb____bwwwwwb_________',
+'_____bwwwwwb____bwwwwwb_________',
+'_____bgggggb____bgggggb_________',
+'______bbbbb______bbbbb__________',
+'______bbbb________bbbb_________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+];
+
+const UMPIRE=[
+'________________________________',
+'________________________________',
+'____________bbbbbb______________',
+'___________bbbbbbbb_____________',
+'__________bbbbbbbbb_____________',
+'__________bbbbbb________________',
+'_________bsssssssb______________',
+'_________bsPbsbPsb______________',
+'_________bsssssssb______________',
+'__________bshhhsb_______________',
+'__________bbmmbb________________',
+'________bbbbbbbbbbbb____________',
+'_______bkkkkkkkkkkkbb___________',
+'______bkkwwkkkkkwwkkb___________',
+'______bkkwwkkkkkwwkkb___________',
+'______bkkkkkkkkkkkkb____________',
+'_______bkkkkkkkkkkkb____________',
+'________bkkkkkkkkkkb____________',
+'________bkkkkkkkkkb_____________',
+'________bkkkkkkkkkb_____________',
+'________bkkkkbbkkkkb____________',
+'_______bkkkkbbkkkkkb____________',
+'_______bkkkkbbkkkkkb____________',
+'_______bkkkkbbkkkkkb____________',
+'________bRRRbbbbRRRb____________',
+'________bRRRb__bRRRb____________',
+'________bbbb____bbbb____________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+'________________________________',
+];
+
+const BALL=[
+'______',
+'_wwww_',
+'wrwwrw',
+'wrwwrw',
+'_wwww_',
+'______',
+];
+
+function draw(canvasId, art, pixelSize) {
+  const cv=document.getElementById(canvasId);
+  const ctx=cv.getContext('2d');
+  ctx.clearRect(0,0,cv.width,cv.height);
+  const h=art.length, w=art[0].length;
+  for(let y=0;y<h;y++) for(let x=0;x<w;x++){
+    const ch=art[y][x];
+    if(C[ch]){ctx.fillStyle=C[ch];ctx.fillRect(x*pixelSize,y*pixelSize,pixelSize,pixelSize)}
+  }
+}
+
+// Draw static pixel art characters first
+draw('batter',BATTER,8);
+draw('catcher',CATCHER,8);
+draw('umpire',UMPIRE,8);
+draw('sceneBatter',BATTER,4);
+draw('sceneCatcher',CATCHER,3);
+draw('sceneUmpire',UMPIRE,3.125);
+draw('sceneBall',BALL,5);
+
+// Sprite animation variables
+let pitchingSprite = new Image();
+let pitchingAnimTimer = null;
+let currentFrame = 0;
+const TOTAL_PITCHING_FRAMES = 16;
+const FRAME_DURATION = 50; // 50ms per frame
+const FRAME_WIDTH = 704;  // 2816/4 = 704
+const FRAME_HEIGHT = 384; // 1536/4 = 384
+
+pitchingSprite.src = './PitchingFrames.png';
+pitchingSprite.onload = () => {
+  drawPitchingFrame(0);
+  drawPitchingFrameForPitcher(1); // Initialize static pitcher with frame 2
+  drawPitchingFrameForScenePitcher(1); // Initialize scene pitcher with frame 2
+};
+
+function drawPitchingFrameForPitcher(frameIndex) {
+  const canvas = document.getElementById('pitcher');
+  const ctx = canvas.getContext('2d');
+  if (!ctx || !pitchingSprite.complete) return;
+  
+  ctx.clearRect(0, 0, 256, 256);
+  
+  // Calculate source position (assuming 4x4 grid)
+  const cols = 4;
+  const sourceX = (frameIndex % cols) * FRAME_WIDTH;
+  const sourceY = Math.floor(frameIndex / cols) * FRAME_HEIGHT;
+  
+  // Draw frame scaled to 256x256
+  ctx.drawImage(
+    pitchingSprite,
+    sourceX, sourceY, FRAME_WIDTH, FRAME_HEIGHT,
+    0, 0, 256, 256
+  );
+}
+
+function drawPitchingFrameForScenePitcher(frameIndex) {
+  const canvas = document.getElementById('scenePitcher');
+  const ctx = canvas.getContext('2d');
+  if (!ctx || !pitchingSprite.complete) return;
+  
+  ctx.clearRect(0, 0, 128, 128);
+  
+  // Calculate source position (assuming 4x4 grid)
+  const cols = 4;
+  const sourceX = (frameIndex % cols) * FRAME_WIDTH;
+  const sourceY = Math.floor(frameIndex / cols) * FRAME_HEIGHT;
+  
+  // Draw frame scaled to 128x128
+  ctx.drawImage(
+    pitchingSprite,
+    sourceX, sourceY, FRAME_WIDTH, FRAME_HEIGHT,
+    0, 0, 128, 128
+  );
+}
+
+function drawPitchingFrame(frameIndex) {
+  const canvas = document.getElementById('pitchingAnim');
+  const ctx = canvas.getContext('2d');
+  if (!ctx || !pitchingSprite.complete) return;
+  
+  ctx.clearRect(0, 0, 256, 256);
+  
+  // Calculate source position (assuming 4x4 grid)
+  const cols = 4;
+  const sourceX = (frameIndex % cols) * FRAME_WIDTH;
+  const sourceY = Math.floor(frameIndex / cols) * FRAME_HEIGHT;
+  
+  // Draw frame scaled to 256x256
+  ctx.drawImage(
+    pitchingSprite,
+    sourceX, sourceY, FRAME_WIDTH, FRAME_HEIGHT,
+    0, 0, 256, 256
+  );
+}
+
+function playPitching() {
+  if (pitchingAnimTimer) clearInterval(pitchingAnimTimer);
+  currentFrame = 0;
+  
+  pitchingAnimTimer = setInterval(() => {
+    drawPitchingFrame(currentFrame);
+    drawPitchingFrameForScenePitcher(currentFrame); // Also animate scene pitcher
+    currentFrame++;
+    
+    if (currentFrame >= TOTAL_PITCHING_FRAMES) {
+      clearInterval(pitchingAnimTimer);
+      pitchingAnimTimer = null;
+      // Keep last frame (frame 16) displayed
+      drawPitchingFrame(TOTAL_PITCHING_FRAMES - 1);
+      drawPitchingFrameForScenePitcher(TOTAL_PITCHING_FRAMES - 1);
+    }
+  }, FRAME_DURATION);
+}
+
+function playStrike(){
+  resetScene();
+  const ball=document.getElementById('sceneBall');
+  const batter=document.getElementById('sceneBatter');
+  const txt=document.getElementById('resultText');
+  ball.style.opacity='1';
+  ball.style.transition='all 0.4s linear';
+  setTimeout(()=>{
+    ball.style.left=(batter.offsetLeft-10)+'px';
+    ball.style.bottom='65px';
+  },50);
+  setTimeout(()=>{
+    batter.style.transition='transform 0.15s ease-in-out';
+    batter.style.transform='rotate(-20deg) translateY(-3px)';
+    txt.textContent='⚡ 好球！揮空！STRIKE!';
+    txt.style.color='#22c55e';
+    txt.style.transform='translateX(-50%) scale(1.2)';
+    setTimeout(()=>txt.style.transform='translateX(-50%) scale(1)',200);
+  },450);
+  setTimeout(()=>{batter.style.transform='translateY(0) rotate(0)'},700);
+}
+
+function playBall(){
+  resetScene();
+  const ball=document.getElementById('sceneBall');
+  const txt=document.getElementById('resultText');
+  ball.style.opacity='1';
+  ball.style.transition='all 0.4s linear';
+  setTimeout(()=>{
+    ball.style.left='450px';
+    ball.style.bottom='140px';
+  },50);
+  setTimeout(()=>{
+    txt.textContent='💨 壞球！BALL!';
+    txt.style.color='#ef4444';
+    txt.style.transform='translateX(-50%) scale(1.2)';
+    setTimeout(()=>txt.style.transform='translateX(-50%) scale(1)',200);
+  },450);
+}
+
+function resetScene(){
+  const ball=document.getElementById('sceneBall');
+  const batter=document.getElementById('sceneBatter');
+  const txt=document.getElementById('resultText');
+  ball.style.transition='none';
+  ball.style.left='80px';ball.style.bottom='60px';ball.style.opacity='0';
+  batter.style.transition='none';batter.style.transform='';
+  txt.style.transform='translateX(-50%) scale(0)';
+}
+</script>
+</body></html>

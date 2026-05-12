@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DotGothic16&display=swap');
+
+:root {
+  /* Baseball pixel palette */
+  --black:         #0a0a0a;
+  --white:         #f0ece0;   /* slightly warm white like a baseball */
+  --blue:          #1a56e8;   /* team jersey blue */
+  --blue-dark:     #1040c0;
+  --blue-shadow:   #0a2870;
+  --orange:        #f5851f;   /* scoreboard orange */
+  --orange-dark:   #c96a0a;
+  --orange-shadow: #7a3f00;
+
+  /* Aliases */
+  --primary:       var(--blue);
+  --accent:        var(--orange);
+  --background:    #0a0a0a;
+  --surface:       #111118;
+  --surface-2:     #1a1a24;
+  --border:        #2a2a3a;
+  --text:          #f0ece0;
+  --text-muted:    #888877;
+  --success:       #22c55e;
+  --error:         #ef4444;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+  background: var(--background);
+  color: var(--text);
+  overflow-x: hidden;
+  image-rendering: pixelated;
+}
+
+button {
+  font-family: 'Press Start 2P', 'DotGothic16', monospace;
+}
+
+body.light-mode {
+  --black:         #f0ece0;
+  --white:         #0a0a0a;
+  --blue:          #1a56e8;
+  --blue-dark:     #1040c0;
+  --blue-shadow:   #a0bdfc;
+  --orange:        #f5851f;
+  --orange-dark:   #c96a0a;
+  --orange-shadow: #fcd5b1;
+
+  --primary:       var(--blue);
+  --accent:        var(--orange);
+  --background:    #f0ece0;
+  --surface:       #ffffff;
+  --surface-2:     #e0e0e0;
+  --border:        #aaaaaa;
+  --text:          #0a0a0a;
+  --text-muted:    #666666;
+}
+
+/* Baseball Animation */
+.animation-container {
+  position: relative;
+  width: 100%;
+  height: 80px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 5px;
+  margin-bottom: 20px;
+  overflow: hidden;
+  background: var(--surface-2);
+  border-radius: 8px;
+  padding-left: 10px;
+  padding-right: 10px;
+}
+
+.anim-character {
+  line-height: 1;
+}
+
+/* Character-specific breathing animations */
+.pitcher-breathe {
+  animation: pitcherBreathe 2.5s ease-in-out infinite;
+}
+
+.batter-breathe {
+  animation: batterBreathe 2.5s ease-in-out infinite;
+}
+
+.catcher-breathe {
+  animation: catcherBreathe 2.5s ease-in-out infinite;
+}
+
+.umpire-breathe {
+  animation: umpireBreathe 2.5s ease-in-out infinite;
+}
+
+@keyframes pitcherBreathe {
+  0%, 100% { 
+    transform: scaleY(1.0);
+    filter: brightness(1.0);
+  }
+  50% { 
+    transform: scaleY(1.05);
+    filter: brightness(1.1);
+  }
+}
+
+@keyframes batterBreathe {
+  0%, 100% { 
+    transform: scaleY(1.0) translateX(0);
+  }
+  50% { 
+    transform: scaleY(1.03) translateX(-1px);
+  }
+}
+
+@keyframes catcherBreathe {
+  0%, 100% { 
+    transform: scaleY(1.0) rotate(0deg);
+  }
+  50% { 
+    transform: scaleY(1.04) rotate(-1deg);
+  }
+}
+
+@keyframes umpireBreathe {
+  0%, 100% { 
+    transform: scaleY(1.0);
+    filter: brightness(1.0);
+  }
+  50% { 
+    transform: scaleY(1.06);
+    filter: brightness(1.08);
+  }
+}
+
+.anim-ball {
+  position: absolute;
+  left: 60px;
+  bottom: 20px;
+  opacity: 0;
+}
+
+.anim-ball.strike {
+  animation: ballStrike 0.4s linear forwards;
+  opacity: 1;
+}
+
+.anim-ball.ball {
+  animation: ballBall 0.4s linear forwards;
+  opacity: 1;
+}
+
+@keyframes ballStrike {
+  0% { left: 60px; bottom: 20px; }
+  100% { left: calc(100% - 180px); bottom: 25px; }
+}
+
+@keyframes ballBall {
+  0% { left: 60px; bottom: 20px; }
+  100% { left: calc(100% - 180px); bottom: 80px; }
+}
+
+.anim-batter {
+  transform-origin: bottom center;
+}
+.anim-batter.swing {
+  animation: batterSwing 0.3s ease-in-out;
+  animation-delay: 0.3s;
+}
+
+@keyframes batterSwing {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(-25deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.anim-result-text {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%) scale(0);
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--orange);
+  text-shadow: 2px 2px 0px var(--black);
+  z-index: 10;
+}
+
+.anim-result-text.show {
+  animation: popupText 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation-delay: 0.4s;
+}
+
+@keyframes popupText {
+  0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
+  50% { transform: translateX(-50%) scale(1.2); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* solo banner */
+.solo-banner {
+  background: linear-gradient(45deg, var(--orange), var(--orange-dark));
+  color: var(--white);
+  padding: 12px;
+  border: 3px solid var(--white);
+  box-shadow: 4px 4px 0 var(--orange-shadow);
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: bold;
+  animation: popupTextNoX 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  margin-top: 16px;
+  text-shadow: 2px 2px 0px var(--black);
+}
+
+@keyframes popupTextNoX {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}

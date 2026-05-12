@@ -1,0 +1,256 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Play, FileText, ArrowRight } from 'lucide-react';
+import { playChord, playNote } from '../utils/audioEngine';
+import { getRandomChords } from '../utils/chords';
+import { getRandomNotes } from '../utils/notes';
+import { PixelBatter, PixelCatcher, PixelUmpire, PixelBall } from './PixelCharacters';
+import { PitchingAnimation } from './PitchingAnimation';
+import { StaticPitcher } from './StaticPitcher';
+import { type GameMode, type Language } from '../App';
+
+type GameItem = {
+  name: string;
+  notes: string[];
+  description?: string;
+  descriptionEn?: string;
+};
+
+type Props = {
+  language: Language;
+  mode: GameMode;
+  onGameOver: (score: number, total: number) => void;
+  onBack: () => void;
+  includeAdvanced?: boolean;
+};
+
+const TOTAL_QUESTIONS = 5;
+
+export const GameScreen: React.FC<Props> = ({ language, mode, onGameOver, onBack, includeAdvanced = false }) => {
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [options, setOptions] = useState<GameItem[]>([]);
+  const [targetItem, setTargetItem] = useState<GameItem | null>(null);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [animState, setAnimState] = useState<'idle' | 'strike' | 'ball'>('idle');
+  const [isPitching, setIsPitching] = useState(false);
+  const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    generateQuestion();
+    return () => {
+      if (playTimerRef.current) clearTimeout(playTimerRef.current);
+    };
+  }, [questionIndex]);
+
+  const generateQuestion = () => {
+    const newOptions = mode === 'chord' ? getRandomChords(4, includeAdvanced) : getRandomNotes(4);
+    const target = newOptions[Math.floor(Math.random() * 4)];
+    setOptions(newOptions);
+    setTargetItem(target);
+    setSelectedName(null);
+    setIsPlaying(false);
+    setShowAnalysis(false);
+    setAnimState('idle');
+    
+    if (playTimerRef.current) clearTimeout(playTimerRef.current);
+    playTimerRef.current = setTimeout(() => {
+      playCurrentSound(target);
+    }, 500);
+  };
+
+  const playCurrentSound = (item: GameItem | null = targetItem) => {
+    if (item && !isPlaying) {
+      setIsPlaying(true);
+      // Don't trigger pitching animation during audio playback
+      
+      if (mode === 'chord') {
+        playChord(item.notes);
+      } else {
+        playNote(item.notes[0]);
+      }
+      
+      // Audio playback duration (independent of animation)
+      setTimeout(() => setIsPlaying(false), mode === 'chord' ? 2500 : 1500);
+    }
+  };
+
+  const handleOptionClick = (item: GameItem) => {
+    if (selectedName) {
+      // If already selected, just play sound
+      if (mode === 'chord') {
+        playChord(item.notes);
+      } else {
+        playNote(item.notes[0]);
+      }
+      return;
+    }
+    
+    setSelectedName(item.name);
+    
+    const isCorrect = item.name === targetItem?.name;
+    if (isCorrect) {
+      setScore(s => s + 1);
+      setAnimState('strike');
+    } else {
+      setAnimState('ball');
+    }
+    
+    // Trigger pitching animation when answering
+    if (!isPlaying) {
+      setIsPlaying(true);
+      setIsPitching(true);
+      
+      if (mode === 'chord') {
+        playChord(item.notes);
+      } else {
+        playNote(item.notes[0]);
+      }
+    }
+  };
+
+  const handleNextQuestion = () => {
+    if (questionIndex < TOTAL_QUESTIONS - 1) {
+      setQuestionIndex(i => i + 1);
+    } else {
+      onGameOver(score, TOTAL_QUESTIONS);
+    }
+  };
+
+  return (
+    <div className="card" style={{ position: 'relative', paddingTop: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '20px', alignItems: 'center' }}>
+        <button className="btn" style={{ padding: '8px 10px', background: 'transparent', color: 'var(--text-muted)', border: 'none', boxShadow: 'none', fontSize: '0.8rem' }} onClick={onBack}>
+          {language === 'zh' ? '◀ 放棄' : '◀ QUIT'}
+        </button>
+        <div className="score-display" style={{ margin: 0, padding: 0, background: 'transparent', border: 'none', boxShadow: 'none' }}>
+          <div style={{ fontSize: '1rem', color: 'var(--text)' }}>
+            {language === 'zh' 
+              ? `題目: ${questionIndex + 1} / ${TOTAL_QUESTIONS}  |  分數: ${score}` 
+              : `Q: ${questionIndex + 1} / ${TOTAL_QUESTIONS}  |  SCORE: ${score}`}
+          </div>
+        </div>
+      </div>
+      
+      <div className="animation-container" style={{ padding: '0 15px', height: '100px' }}>
+        <div className="anim-character" style={{ zIndex: 2 }}>
+          {isPitching ? (
+            <div style={{ transform: 'scaleY(1.0)', filter: 'brightness(1.0)' }}>
+              <PitchingAnimation 
+                isPlaying={isPitching} 
+                size={80}
+                onAnimationEnd={() => {
+                  setIsPitching(false);
+                }}
+              />
+            </div>
+          ) : (
+            <StaticPitcher size={80} frameIndex={1} />
+          )}
+        </div>
+        <div className={`anim-ball ${animState === 'strike' ? 'strike' : animState === 'ball' ? 'ball' : ''}`} style={{ zIndex: 3 }}>
+          <PixelBall size={18} />
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', zIndex: 2 }}>
+          <div className={`anim-character anim-batter ${animState === 'strike' ? 'swing' : ''} batter-breathe`} style={{ animationDelay: '0.2s' }}>
+            <PixelBatter size={80} isSwinging={animState === 'strike'} />
+          </div>
+          <div className="anim-character catcher-breathe" style={{ animationDelay: '0.4s' }}>
+            <PixelCatcher size={70} />
+          </div>
+          <div className="anim-character umpire-breathe" style={{ animationDelay: '0.6s' }}>
+            <PixelUmpire size={75} />
+          </div>
+        </div>
+        {animState !== 'idle' && (
+          <div className={`anim-result-text show`} style={{ color: animState === 'strike' ? 'var(--success)' : 'var(--error)' }}>
+            {animState === 'strike' 
+               ? (language === 'zh' ? '好球！揮空！' : 'STRIKE!') 
+               : (language === 'zh' ? '壞球！' : 'BALL!')}
+          </div>
+        )}
+      </div>
+
+      <button 
+        className="btn btn-play" 
+        onClick={() => playCurrentSound()}
+        disabled={isPlaying}
+      >
+        <Play size={50} fill="white" />
+      </button>
+
+      <div className="options-grid">
+        {options.map((item) => {
+          let btnClass = "btn btn-option";
+          if (selectedName) {
+            if (item.name === targetItem?.name) {
+              btnClass += " correct";
+            } else if (item.name === selectedName) {
+              btnClass += " wrong";
+            }
+          }
+          
+          return (
+            <button 
+              key={item.name}
+              className={btnClass}
+              onClick={() => handleOptionClick(item)}
+            >
+              {item.name}
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedName && (
+        <div style={{ marginTop: '30px', display: 'flex', gap: '10px', justifyContent: 'center', animation: 'fadeIn 0.5s' }}>
+          {mode === 'chord' && (
+            <button className="btn" style={{ backgroundColor: '#a1c4fd', color: 'white', display: 'flex', alignItems: 'center' }} onClick={() => setShowAnalysis(true)}>
+              <FileText size={20} style={{ marginRight: '5px' }} />
+              {language === 'zh' ? '樂理分析' : 'ANALYSIS'}
+            </button>
+          )}
+          <button className="btn btn-primary" style={{ display: 'flex', alignItems: 'center' }} onClick={handleNextQuestion}>
+            {questionIndex < TOTAL_QUESTIONS - 1 
+              ? (language === 'zh' ? '下一題' : 'NEXT') 
+              : (language === 'zh' ? '看成績' : 'RESULT')}
+            <ArrowRight size={20} style={{ marginLeft: '5px' }} />
+          </button>
+        </div>
+      )}
+
+      {showAnalysis && targetItem && mode === 'chord' && (
+        <div className="modal-overlay" onClick={() => setShowAnalysis(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h3 style={{ fontSize: '1.8rem', color: 'var(--primary)', marginBottom: '15px' }}>
+              {targetItem.name} {language === 'zh' ? '分析' : 'ANALYSIS'}
+            </h3>
+            <p style={{ fontSize: '1.1rem', marginBottom: '20px', lineHeight: '1.6', textAlign: 'left', color: '#555' }}>
+              {language === 'zh' ? targetItem.description : (targetItem.descriptionEn || targetItem.description)}
+            </p>
+            <h4 style={{ marginBottom: '10px', color: '#888', textAlign: 'left' }}>
+              {language === 'zh' ? '組成音：' : 'NOTES:'}
+            </h4>
+            <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginBottom: '25px' }}>
+              {targetItem.notes.map(note => (
+                <button 
+                  key={note} 
+                  className="btn btn-option" 
+                  style={{ padding: '8px 15px', flex: '1', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  onClick={() => playNote(note)}
+                >
+                  <Play size={16} style={{ marginRight: '5px' }} />
+                  {note}
+                </button>
+              ))}
+            </div>
+            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => setShowAnalysis(false)}>
+              {language === 'zh' ? '關閉' : 'CLOSE'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
