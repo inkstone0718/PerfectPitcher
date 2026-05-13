@@ -159,22 +159,21 @@ export const MultiplayerGameScreen: React.FC<Props> = ({ language, roomId, playe
     const wrongAnswers = Object.entries(answers || {})
       .filter(([, ans]) => ans.answer !== currentAnswer);
 
-    const totalPlayers = Object.keys(players).length;
     const scoreUpdates: Record<string, number> = {};
 
-    if (correctAnswers.length === totalPlayers && totalPlayers >= 2) {
-      // Tie: all players answered correctly → everyone gets flat +100
-      correctAnswers.forEach(([pid]) => {
-        scoreUpdates[pid] = (players[pid]?.score ?? 0) + 100;
-      });
-    } else {
-      correctAnswers.forEach(([pid], index) => {
-        const base = CORRECT_BASE[index] ?? 0;
-        const soloBonus = correctAnswers.length === 1 ? SOLO_CORRECT_BONUS : 0;
-        const halfBonus = correctAnswers.length === 2 ? 50 : 0;
-        scoreUpdates[pid] = (players[pid]?.score ?? 0) + base + soloBonus + halfBonus;
-      });
-    }
+    let currentRankIndex = 0;
+    correctAnswers.forEach(([pid], index) => {
+      // Tie-breaker logic: if times are exactly the same, use the same rank index
+      if (index > 0 && correctAnswers[index][1].time !== correctAnswers[index - 1][1].time) {
+        currentRankIndex = index;
+      }
+
+      const base = CORRECT_BASE[currentRankIndex] ?? 0;
+      const soloBonus = correctAnswers.length === 1 ? SOLO_CORRECT_BONUS : 0;
+      const halfBonus = correctAnswers.length === 2 ? 50 : 0;
+      scoreUpdates[pid] = (players[pid]?.score ?? 0) + base + soloBonus + halfBonus;
+    });
+
     wrongAnswers.forEach(([pid]) => {
       scoreUpdates[pid] = players[pid]?.score ?? 0;
     });
@@ -388,11 +387,27 @@ export const MultiplayerGameScreen: React.FC<Props> = ({ language, roomId, playe
           )}
           <div style={{ marginTop: '16px', padding: '12px', background: 'var(--surface-2)', border: '2px solid var(--success)', fontSize: '0.6rem' }}>
             <div style={{ color: 'var(--success)', marginBottom: '8px' }}>✓ {t('答對的玩家', 'CORRECT PLAYERS')}:</div>
-            {correctAnswersThisRound.map(([pid], i) => (
-              <div key={pid} style={{ color: 'var(--text)', marginBottom: '4px' }}>
-                {['🥇','🥈','🥉','4️⃣'][i]} {room.players[pid]?.name} +{CORRECT_BASE[i]}{i === 0 && correctAnswersThisRound.length === 1 ? ` (+${SOLO_CORRECT_BONUS} SOLO!)` : ''}
-              </div>
-            ))}
+            {correctAnswersThisRound.map(([pid], i) => {
+              let displayRankIndex = 0;
+              for (let j = 1; j <= i; j++) {
+                if (correctAnswersThisRound[j][1].time !== correctAnswersThisRound[j-1][1].time) {
+                  displayRankIndex = j;
+                } else {
+                  // stay same as previous
+                }
+              }
+              const base = CORRECT_BASE[displayRankIndex] ?? 0;
+              const soloBonus = correctAnswersThisRound.length === 1 ? SOLO_CORRECT_BONUS : 0;
+              const halfBonus = correctAnswersThisRound.length === 2 ? 50 : 0;
+              const totalRoundScore = base + soloBonus + halfBonus;
+              
+              return (
+                <div key={pid} style={{ color: 'var(--text)', marginBottom: '4px' }}>
+                  {['🥇','🥈','🥉','4️⃣'][displayRankIndex]} {room.players[pid]?.name} +{totalRoundScore}
+                  {soloBonus > 0 && <span style={{ fontSize: '0.5rem', color: 'var(--orange)', marginLeft: '4px' }}>(SOLO!)</span>}
+                </div>
+              );
+            })}
           </div>
         </>
       )}
