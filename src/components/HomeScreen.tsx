@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import type { User } from 'firebase/auth';
 import { HelpCircle, LogIn, LogOut, Trophy, X } from 'lucide-react';
 import { type GameMode, type Language } from '../App';
-import { getGlobalLeaderboard, getSoloModeLabel, SOLO_MODE_KEYS, type LeaderboardEntry, type SoloModeKey } from '../utils/playerStats';
+import { getGlobalLeaderboard, getSoloModeLabel, getUserBestScores, SOLO_MODE_KEYS, type LeaderboardEntry, type SoloModeKey } from '../utils/playerStats';
 
 type Props = {
   language: Language;
   user: User | null;
+  authError: string;
   onSignIn: () => Promise<void>;
   onSignOut: () => Promise<void>;
   onStart: (mode: GameMode) => void;
@@ -34,14 +35,18 @@ const inningStyle = (active: boolean): React.CSSProperties => ({
   color: active ? '#0a0a0a' : '#888877',
 });
 
-export const HomeScreen: React.FC<Props> = ({ language, user, onSignIn, onSignOut, onStart, onStartChallenge, onStartMultiplayer, onOpenSettings }) => {
+export const HomeScreen: React.FC<Props> = ({ language, user, authError, onSignIn, onSignOut, onStart, onStartChallenge, onStartMultiplayer, onOpenSettings }) => {
   const [view, setView] = useState<'main' | 'single'>('main');
   const [showHelp, setShowHelp] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [leaderboardMode, setLeaderboardMode] = useState<SoloModeKey>('chord_basic');
   const [leaderboardEntries, setLeaderboardEntries] = useState<LeaderboardEntry[]>([]);
+  const [profileResults, setProfileResults] = useState<Record<SoloModeKey, LeaderboardEntry | null> | null>(null);
   const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(false);
   const [leaderboardError, setLeaderboardError] = useState('');
+  const [profileError, setProfileError] = useState('');
 
   useEffect(() => {
     if (!showLeaderboard) return;
@@ -70,6 +75,34 @@ export const HomeScreen: React.FC<Props> = ({ language, user, onSignIn, onSignOu
       isMounted = false;
     };
   }, [showLeaderboard, leaderboardMode, language]);
+
+  useEffect(() => {
+    if (!showProfile || !user) return;
+
+    let isMounted = true;
+    const loadProfile = async () => {
+      setIsProfileLoading(true);
+      setProfileError('');
+      try {
+        const results = await getUserBestScores(user);
+        if (isMounted) setProfileResults(results);
+      } catch (error) {
+        console.error(error);
+        if (isMounted) {
+          setProfileError(language === 'zh' ? '無法讀取個人資料' : 'Failed to load profile');
+          setProfileResults(null);
+        }
+      } finally {
+        if (isMounted) setIsProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [showProfile, user, language]);
 
   return (
     <div className="card">
@@ -108,6 +141,11 @@ export const HomeScreen: React.FC<Props> = ({ language, user, onSignIn, onSignOu
           {user ? <LogOut size={16} /> : <LogIn size={16} />}
           {user ? (language === 'zh' ? '登出' : 'SIGN OUT') : (language === 'zh' ? 'Google 登入' : 'GOOGLE SIGN IN')}
         </button>
+        {authError && (
+          <p style={{ flexBasis: '100%', fontSize: '0.58rem', color: 'var(--error)', lineHeight: 1.8, marginTop: '4px', textAlign: 'left' }}>
+            {authError}
+          </p>
+        )}
       </div>
 
       {/* Mode select */}
@@ -187,6 +225,14 @@ export const HomeScreen: React.FC<Props> = ({ language, user, onSignIn, onSignOu
         >
           <Trophy size={18} />
           {language === 'zh' ? '排行榜' : 'LEADERBOARD'}
+        </button>
+        <button
+          className="btn"
+          onClick={() => setShowProfile(true)}
+          style={{ background: 'transparent', color: '#888877', border: 'none', boxShadow: 'none', padding: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <Trophy size={18} />
+          {language === 'zh' ? '個人資料' : 'PROFILE'}
         </button>
         <button
           className="btn"
@@ -335,6 +381,96 @@ export const HomeScreen: React.FC<Props> = ({ language, user, onSignIn, onSignOu
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showProfile && (
+        <div className="modal-overlay" onClick={() => setShowProfile(false)}>
+          <div className="modal-content" style={{ textAlign: 'left', maxWidth: '620px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '18px' }}>
+              <h2 className="title" style={{ fontSize: '1.2rem', margin: 0 }}>
+                {language === 'zh' ? '個人資料' : 'PERSONAL PROFILE'}
+              </h2>
+              <button
+                className="btn"
+                onClick={() => setShowProfile(false)}
+                aria-label={language === 'zh' ? '關閉個人資料' : 'Close profile'}
+                style={{ padding: '8px', background: 'transparent', border: 'none', boxShadow: 'none', color: 'var(--text)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {!user && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.8 }}>
+                {language === 'zh'
+                  ? '請先登入 Google，才能查看個人最佳成績。'
+                  : 'Please sign in with Google to view your personal bests.'}
+              </p>
+            )}
+
+            {user && (
+              <>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '18px' }}>
+                  {language === 'zh'
+                    ? '你的每種單人模式最佳成績會儲存在 Firebase。'
+                    : 'Your best performance for each solo mode is stored in Firebase.'}
+                </p>
+
+                {isProfileLoading && (
+                  <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textAlign: 'center', padding: '20px' }}>
+                    {language === 'zh' ? '讀取中...' : 'Loading...'}
+                  </p>
+                )}
+
+                {!isProfileLoading && profileError && (
+                  <p style={{ fontSize: '0.7rem', color: 'var(--error)', textAlign: 'center', padding: '20px' }}>{profileError}</p>
+                )}
+
+                {!isProfileLoading && !profileError && profileResults && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px' }}>
+                    {SOLO_MODE_KEYS.map((modeKey) => {
+                      const entry = profileResults[modeKey];
+                      return (
+                        <div key={modeKey} style={{ padding: '14px', background: 'var(--surface-2)', border: '2px solid var(--border)', borderRadius: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>{getSoloModeLabel(modeKey, language)}</div>
+                            {entry ? (
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                                {entry.percent}%
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                                {language === 'zh' ? '尚無紀錄' : 'No record yet'}
+                              </span>
+                            )}
+                          </div>
+                          {entry ? (
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{language === 'zh' ? '成績' : 'SCORE'}</div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{entry.score} / {entry.total}</div>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>{language === 'zh' ? '時間' : 'TIME'}</div>
+                                <div style={{ fontSize: '0.9rem', fontWeight: 700 }}>{entry.timeMs > 0 ? `${(entry.timeMs / 1000).toFixed(1)}s` : '—'}</div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                              {language === 'zh'
+                                ? '打開任一單人遊戲後就能儲存個人最佳。'
+                                : 'Play any solo game to save your personal best.'}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

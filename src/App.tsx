@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
+import { getRedirectResult, onAuthStateChanged, signInWithRedirect, signOut, type User } from 'firebase/auth';
 import { HomeScreen } from './components/HomeScreen';
 import { GameScreen } from './components/GameScreen';
 import { ResultScreen } from './components/ResultScreen';
@@ -47,16 +47,53 @@ function App() {
   const [multiplayerPlayerId, setMultiplayerPlayerId] = useState('');
   const [multiplayerPlayerName, setMultiplayerPlayerName] = useState('');
   const [user, setUser] = useState<User | null>(null);
+  const [authError, setAuthError] = useState('');
 
   useEffect(() => {
     return onAuthStateChanged(auth, setUser);
   }, []);
 
+  useEffect(() => {
+    getRedirectResult(auth).catch((error: any) => {
+      console.error(error);
+      const code = error?.code || '';
+      if (code === 'auth/configuration-not-found') {
+        setAuthError(language === 'zh'
+          ? 'Firebase Authentication 尚未啟用，或 Google 登入提供者尚未設定。請到 Firebase Console 啟用 Authentication > Sign-in method > Google。'
+          : 'Firebase Authentication is not enabled, or Google sign-in is not configured. Enable Authentication > Sign-in method > Google in Firebase Console.');
+      } else if (code === 'auth/unauthorized-domain') {
+        setAuthError(language === 'zh'
+          ? '目前網域未加入 Firebase Authentication 授權網域。請在 Firebase Console 新增此網域。'
+          : 'This domain is not authorized for Firebase Authentication. Add it in Firebase Console.');
+      } else {
+        setAuthError(language === 'zh' ? 'Google 登入失敗，請稍後再試。' : 'Google sign-in failed. Please try again later.');
+      }
+    });
+  }, [language]);
+
   const handleSignIn = async () => {
-    await signInWithPopup(auth, googleProvider);
+    setAuthError('');
+    try {
+      await signInWithRedirect(auth, googleProvider);
+    } catch (error: any) {
+      console.error(error);
+      const code = error?.code || '';
+      if (code === 'auth/configuration-not-found') {
+        setAuthError(language === 'zh'
+          ? 'Firebase Authentication 尚未啟用，或 Google 登入提供者尚未設定。請到 Firebase Console 啟用 Authentication > Sign-in method > Google。'
+          : 'Firebase Authentication is not enabled, or Google sign-in is not configured. Enable Authentication > Sign-in method > Google in Firebase Console.');
+      } else if (code === 'auth/unauthorized-domain') {
+        setAuthError(language === 'zh'
+          ? '目前網域未加入 Firebase Authentication 授權網域。請在 Firebase Console 新增此網域。'
+          : 'This domain is not authorized for Firebase Authentication. Add it in Firebase Console.');
+      } else {
+        setAuthError(language === 'zh' ? 'Google 登入失敗，請稍後再試。' : 'Google sign-in failed. Please try again later.');
+      }
+    }
   };
 
   const handleSignOut = async () => {
+    setAuthError('');
     await signOut(auth);
   };
 
@@ -122,13 +159,13 @@ function App() {
 
   return (
     <div className="app-container">
-      {gameState === 'home' && <HomeScreen language={language} user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} onStart={handleStart} onStartChallenge={handleStartChallengeSetup} onStartMultiplayer={handleStartMultiplayer} onOpenSettings={handleOpenSettings} />}
+      {gameState === 'home' && <HomeScreen language={language} user={user} authError={authError} onSignIn={handleSignIn} onSignOut={handleSignOut} onStart={handleStart} onStartChallenge={handleStartChallengeSetup} onStartMultiplayer={handleStartMultiplayer} onOpenSettings={handleOpenSettings} />}
       {gameState === 'settings' && <SettingsScreen language={language} theme={theme} onLanguageChange={setLanguage} onThemeChange={setTheme} onBack={handleHome} />}
       {gameState === 'guessSetup' && <GuessSetupScreen language={language} mode={gameMode as 'chord' | 'note'} onStart={handleStartGuess} onBack={handleHome} />}
       {gameState === 'challengeSetup' && <ChallengeSetupScreen language={language} onStart={handleStartChallenge} onBack={handleHome} />}
       {gameState === 'playing' && gameMode !== 'challenge' && <GameScreen language={language} mode={gameMode} onGameOver={handleGameOver} onBack={handleHome} includeAdvanced={includeAdvancedChords} />}
       {gameState === 'playing' && gameMode === 'challenge' && challengeConfig && <ChallengeGameScreen language={language} config={challengeConfig} onGameOver={handleGameOver} onBack={handleHome} />}
-      {gameState === 'result' && <ResultScreen language={language} user={user} modeKey={getSoloModeKey(gameMode, includeAdvancedChords)} score={score} total={totalQuestions} timeMs={challengeTime} onSignIn={handleSignIn} onRestart={handleRestart} onHome={handleHome} />}
+      {gameState === 'result' && <ResultScreen language={language} user={user} authError={authError} modeKey={getSoloModeKey(gameMode, includeAdvancedChords)} score={score} total={totalQuestions} timeMs={challengeTime} onSignIn={handleSignIn} onRestart={handleRestart} onHome={handleHome} />}
       {gameState === 'multiplayerLobby' && <MultiplayerLobbyScreen language={language} onGameStart={handleMultiplayerGameStart} onBack={handleHome} />}
       {gameState === 'multiplayerGame' && <MultiplayerGameScreen language={language} roomId={multiplayerRoomId} playerId={multiplayerPlayerId} playerName={multiplayerPlayerName} onBack={handleHome} onBackToRoom={handleBackToRoom} />}
     </div>

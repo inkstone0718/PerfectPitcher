@@ -100,3 +100,25 @@ export const getGlobalLeaderboard = async (modeKey: SoloModeKey, limit = 10) => 
     return a.updatedAt - b.updatedAt;
   });
 };
+
+export const getUserBestScores = async (user: User) => {
+  const snapshot = await get(ref(db, `users/${user.uid}/bestScores`));
+  const value = snapshot.val() as Record<SoloModeKey, LeaderboardEntry> | null;
+
+  const bestScores: Record<SoloModeKey, LeaderboardEntry | null> = {
+    chord_basic: null,
+    chord_advanced: null,
+    note: null,
+    live_challenge: null,
+  };
+
+  if (value) {
+    for (const modeKey of SOLO_MODE_KEYS) {
+      if (value[modeKey]) {
+        bestScores[modeKey] = value[modeKey];
+      }
+    }
+  }
+
+  return bestScores;
+};
