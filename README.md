@@ -109,8 +109,9 @@ public/                Sprite sheets and game assets
 
 - Live Challenge requires browser microphone permission.
 - Audio playback must be started from a user gesture, so the app initializes audio after the player starts a mode.
-- The current Firebase database rules are open for demo/testing. Tighten `database.rules.json` before using the multiplayer mode in production.
-- The project currently stores Firebase configuration in the client bundle, which is acceptable for Firebase client apps only when database rules are properly secured.
+- Firebase Realtime Database rules deny root-level access and only allow validated room data under `rooms/{ROOM_CODE}`.
+- The project currently stores Firebase configuration in the client bundle, which is acceptable for Firebase client apps when database rules are properly secured.
+- For stronger production security, add Firebase Authentication so room hosts and players can be authorized by identity, not only by validated data shape.
 
 ## Future Improvements
 

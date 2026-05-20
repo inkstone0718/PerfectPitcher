@@ -1,6 +1,82 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true
+    ".read": false,
+    ".write": false,
+    "rooms": {
+      ".read": false,
+      ".write": false,
+      "$roomId": {
+        ".read": "$roomId.matches(/^[A-Z0-9]{4}$/)",
+        ".write": "$roomId.matches(/^[A-Z0-9]{4}$/) && (newData.val() === null || newData.hasChildren(['id', 'host', 'mode', 'maxPlayers', 'targetScore', 'status', 'players', 'currentQuestion', 'currentAnswer', 'questionStartTime', 'answers']))",
+        "id": {
+          ".validate": "newData.isString() && newData.val() === $roomId"
+        },
+        "host": {
+          ".validate": "newData.isString() && newData.val().matches(/^[a-z0-9]{8}$/)"
+        },
+        "mode": {
+          ".validate": "newData.isString() && (newData.val() === 'chord' || newData.val() === 'note')"
+        },
+        "maxPlayers": {
+          ".validate": "newData.isNumber() && (newData.val() === 2 || newData.val() === 3 || newData.val() === 4)"
+        },
+        "targetScore": {
+          ".validate": "newData.isNumber() && (newData.val() === 500 || newData.val() === 1000 || newData.val() === 1500)"
+        },
+        "status": {
+          ".validate": "newData.isString() && (newData.val() === 'waiting' || newData.val() === 'playing' || newData.val() === 'finished')"
+        },
+        "currentQuestion": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+        },
+        "currentAnswer": {
+          ".validate": "newData.isString() && newData.val().length <= 12 && newData.val().matches(/^[A-Za-z0-9# ]*$/)"
+        },
+        "questionStartTime": {
+          ".validate": "newData.isNumber() && newData.val() >= 0"
+        },
+        "players": {
+          ".validate": "newData.hasChildren()",
+          "$playerId": {
+            ".validate": "newData.val() === null || (newData.hasChildren(['id', 'name', 'score', 'isHost', 'ready']) && newData.child('id').val() === $playerId)",
+            "id": {
+              ".validate": "newData.isString() && newData.val() === $playerId && newData.val().matches(/^[a-z0-9]{8}$/)"
+            },
+            "name": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 12"
+            },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 10000"
+            },
+            "isHost": {
+              ".validate": "newData.isBoolean()"
+            },
+            "ready": {
+              ".validate": "newData.isBoolean()"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "answers": {
+          "$playerId": {
+            ".validate": "newData.val() === null || (newData.hasChildren(['answer', 'time']) && $playerId.matches(/^[a-z0-9]{8}$/))",
+            "answer": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 12 && newData.val().matches(/^[A-Za-z0-9# ]*$/)"
+            },
+            "time": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 60000"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    }
   }
 }
