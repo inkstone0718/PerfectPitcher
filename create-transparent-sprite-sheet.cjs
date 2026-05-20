@@ -8,8 +8,8 @@ async function createTransparentSpriteSheet() {
     
     // Configuration
     const COLS = 4;
-    const ROWS = 4;
-    const TOTAL_FRAMES = 16;
+    const ROWS = 2;
+    const TOTAL_FRAMES = 8;
     
     // Load first frame to get dimensions
     const firstFrame = await loadImage(`${inputDir}/pitching-frame-01.png`);

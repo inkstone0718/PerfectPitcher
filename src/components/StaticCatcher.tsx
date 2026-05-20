@@ -1,23 +1,23 @@
 import React from 'react';
 
-interface StaticPitcherProps {
+interface StaticCatcherProps {
   width?: number;
   height?: number;
   className?: string;
   frameIndex?: number;
 }
 
-export const StaticPitcher: React.FC<StaticPitcherProps> = ({
-  width = 80,
-  height = 88, // Default proportional to 234:256
+export const StaticCatcher: React.FC<StaticCatcherProps> = ({
+  width = 70,
+  height = 80, 
   className,
-  frameIndex = 1
+  frameIndex = 0
 }) => {
-  const spriteSheet = '/PitchingFramesTransparent.png';
-  const frameWidth = 704;
-  const frameHeight = 768;
+  const spriteSheet = '/CatchingFramesTransparent.png';
+  const frameWidth = 542;
+  const frameHeight = 616;
   const cols = 4;
-  const rows = 2;
+  const rows = 1;
 
   const col = frameIndex % cols;
   const row = Math.floor(frameIndex / cols);

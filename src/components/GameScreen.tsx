@@ -3,9 +3,15 @@ import { Play, FileText, ArrowRight } from 'lucide-react';
 import { playChord, playNote } from '../utils/audioEngine';
 import { getRandomChords } from '../utils/chords';
 import { getRandomNotes } from '../utils/notes';
-import { PixelBatter, PixelCatcher, PixelUmpire, PixelBall } from './PixelCharacters';
+
 import { PitchingAnimation } from './PitchingAnimation';
 import { StaticPitcher } from './StaticPitcher';
+import { BattingAnimation } from './BattingAnimation';
+import { StaticBatter } from './StaticBatter';
+import { CatchingAnimation } from './CatchingAnimation';
+import { StaticCatcher } from './StaticCatcher';
+import { UmpireAnimation } from './UmpireAnimation';
+import { StaticUmpire } from './StaticUmpire';
 import { type GameMode, type Language } from '../App';
 
 type GameItem = {
@@ -33,8 +39,9 @@ export const GameScreen: React.FC<Props> = ({ language, mode, onGameOver, onBack
   const [selectedName, setSelectedName] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [showAnalysis, setShowAnalysis] = useState(false);
-  const [animState, setAnimState] = useState<'idle' | 'strike' | 'ball'>('idle');
   const [isPitching, setIsPitching] = useState(false);
+  const [delayedAnimState, setDelayedAnimState] = useState<'idle' | 'strike' | 'ball'>('idle');
+  const [delayedIsPitching, setDelayedIsPitching] = useState(false);
   const playTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -52,7 +59,8 @@ export const GameScreen: React.FC<Props> = ({ language, mode, onGameOver, onBack
     setSelectedName(null);
     setIsPlaying(false);
     setShowAnalysis(false);
-    setAnimState('idle');
+    setDelayedAnimState('idle');
+    setDelayedIsPitching(false);
     
     if (playTimerRef.current) clearTimeout(playTimerRef.current);
     playTimerRef.current = setTimeout(() => {
@@ -63,7 +71,6 @@ export const GameScreen: React.FC<Props> = ({ language, mode, onGameOver, onBack
   const playCurrentSound = (item: GameItem | null = targetItem) => {
     if (item && !isPlaying) {
       setIsPlaying(true);
-      setIsPitching(true);
       
       if (mode === 'chord') {
         playChord(item.notes);
@@ -92,15 +99,19 @@ export const GameScreen: React.FC<Props> = ({ language, mode, onGameOver, onBack
     const isCorrect = item.name === targetItem?.name;
     if (isCorrect) {
       setScore(s => s + 1);
-      setAnimState('strike');
-    } else {
-      setAnimState('ball');
     }
     
-    // Trigger pitching animation when answering
+    // Trigger pitching animation when answering immediately
+    setIsPitching(true);
+    
+    // Trigger batter, catcher, and umpire after 400ms delay
+    setTimeout(() => {
+      setDelayedAnimState(isCorrect ? 'strike' : 'ball');
+      setDelayedIsPitching(true);
+    }, 400);
+    
     if (!isPlaying) {
       setIsPlaying(true);
-      setIsPitching(true);
       
       if (mode === 'chord') {
         playChord(item.notes);
@@ -136,36 +147,47 @@ export const GameScreen: React.FC<Props> = ({ language, mode, onGameOver, onBack
       <div className="animation-container" style={{ padding: '0 15px', height: '100px' }}>
         <div className="anim-character" style={{ zIndex: 2 }}>
           {isPitching ? (
-            <div style={{ transform: 'scaleY(1.0)', filter: 'brightness(1.0)' }}>
-              <PitchingAnimation 
-                isPlaying={isPitching} 
-                size={80}
-                onAnimationEnd={() => {
-                  setIsPitching(false);
-                }}
-              />
-            </div>
+            <PitchingAnimation 
+              isPlaying={isPitching} 
+              width={80}
+              height={88}
+              onAnimationEnd={() => setIsPitching(false)}
+            />
           ) : (
-            <StaticPitcher size={80} frameIndex={1} />
+            <StaticPitcher width={80} height={88} frameIndex={1} />
           )}
         </div>
-        <div className={`anim-ball ${animState === 'strike' ? 'strike' : animState === 'ball' ? 'ball' : ''}`} style={{ zIndex: 3 }}>
-          <PixelBall size={18} />
-        </div>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', zIndex: 2 }}>
-          <div className={`anim-character anim-batter ${animState === 'strike' ? 'swing' : ''} batter-breathe`} style={{ animationDelay: '0.2s' }}>
-            <PixelBatter size={80} isSwinging={animState === 'strike'} />
+          <div className="anim-character anim-batter" style={{ animationDelay: '0.2s' }}>
+            {delayedAnimState === 'strike' ? (
+              <BattingAnimation isPlaying={true} width={80} height={88} />
+            ) : (
+              <StaticBatter width={80} height={88} frameIndex={0} className="batter-breathe" />
+            )}
           </div>
-          <div className="anim-character catcher-breathe" style={{ animationDelay: '0.4s' }}>
-            <PixelCatcher size={70} />
+          <div className="anim-character" style={{ animationDelay: '0.4s' }}>
+            {delayedIsPitching ? (
+              <CatchingAnimation isPlaying={true} width={70} height={80} onAnimationEnd={() => setDelayedIsPitching(false)} />
+            ) : (
+              <StaticCatcher width={70} height={80} frameIndex={0} className="catcher-breathe" />
+            )}
           </div>
-          <div className="anim-character umpire-breathe" style={{ animationDelay: '0.6s' }}>
-            <PixelUmpire size={75} />
+          <div className="anim-character" style={{ animationDelay: '0.6s' }}>
+            {delayedAnimState !== 'idle' ? (
+              <UmpireAnimation 
+                isPlaying={true} 
+                type={delayedAnimState === 'strike' ? 'strike' : 'ball'} 
+                width={75} 
+                height={82} 
+              />
+            ) : (
+              <StaticUmpire width={75} height={82} frameIndex={0} className="umpire-breathe" />
+            )}
           </div>
         </div>
-        {animState !== 'idle' && (
-          <div className={`anim-result-text show`} style={{ color: animState === 'strike' ? 'var(--success)' : 'var(--error)' }}>
-            {animState === 'strike' 
+        {delayedAnimState !== 'idle' && (
+          <div className={`anim-result-text show`} style={{ color: delayedAnimState === 'strike' ? 'var(--success)' : 'var(--error)' }}>
+            {delayedAnimState === 'strike' 
                ? (language === 'zh' ? '好球！揮空！' : 'STRIKE!') 
                : (language === 'zh' ? '壞球！' : 'BALL!')}
           </div>

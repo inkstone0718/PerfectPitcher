@@ -1,23 +1,23 @@
 import React from 'react';
 
-interface StaticPitcherProps {
+interface StaticUmpireProps {
   width?: number;
   height?: number;
   className?: string;
   frameIndex?: number;
 }
 
-export const StaticPitcher: React.FC<StaticPitcherProps> = ({
+export const StaticUmpire: React.FC<StaticUmpireProps> = ({
   width = 80,
-  height = 88, // Default proportional to 234:256
+  height = 88, 
   className,
-  frameIndex = 1
+  frameIndex = 0
 }) => {
-  const spriteSheet = '/PitchingFramesTransparent.png';
+  const spriteSheet = '/UmpireStrikeTransparent.png?v=3';
   const frameWidth = 704;
   const frameHeight = 768;
   const cols = 4;
-  const rows = 2;
+  const rows = 1;
 
   const col = frameIndex % cols;
   const row = Math.floor(frameIndex / cols);

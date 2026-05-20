@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { HelpCircle, X } from 'lucide-react';
 import { type GameMode, type Language } from '../App';
 
 type Props = {
@@ -30,6 +31,7 @@ const inningStyle = (active: boolean): React.CSSProperties => ({
 
 export const HomeScreen: React.FC<Props> = ({ language, onStart, onStartChallenge, onStartMultiplayer, onOpenSettings }) => {
   const [view, setView] = useState<'main' | 'single'>('main');
+  const [showHelp, setShowHelp] = useState(false);
 
   return (
     <div className="card">
@@ -120,7 +122,15 @@ export const HomeScreen: React.FC<Props> = ({ language, onStart, onStartChalleng
         </div>
       )}
 
-      <div style={{ marginTop: '32px', marginBottom: '8px' }}>
+      <div style={{ marginTop: '32px', marginBottom: '8px', display: 'flex', justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <button
+          className="btn"
+          onClick={() => setShowHelp(true)}
+          style={{ background: 'transparent', color: '#888877', border: 'none', boxShadow: 'none', padding: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}
+        >
+          <HelpCircle size={18} />
+          {language === 'zh' ? '說明' : 'HELP'}
+        </button>
         <button
           className="btn"
           onClick={onOpenSettings}
@@ -129,6 +139,72 @@ export const HomeScreen: React.FC<Props> = ({ language, onStart, onStartChalleng
           ⚙️ {language === 'zh' ? '設定' : 'SETTINGS'}
         </button>
       </div>
+
+      {showHelp && (
+        <div className="modal-overlay" onClick={() => setShowHelp(false)}>
+          <div className="modal-content" style={{ textAlign: 'left', maxWidth: '560px' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', marginBottom: '18px' }}>
+              <h2 className="title" style={{ fontSize: '1.2rem', margin: 0 }}>
+                {language === 'zh' ? '玩法說明' : 'HOW TO PLAY'}
+              </h2>
+              <button
+                className="btn"
+                onClick={() => setShowHelp(false)}
+                aria-label={language === 'zh' ? '關閉說明' : 'Close help'}
+                style={{ padding: '8px', background: 'transparent', border: 'none', boxShadow: 'none', color: 'var(--text)' }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', color: 'var(--text)', lineHeight: 1.9 }}>
+              <section>
+                <h3 style={{ fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '6px' }}>
+                  {language === 'zh' ? '單人練習' : 'SINGLE PLAYER'}
+                </h3>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {language === 'zh'
+                    ? '聽完題目音檔後，從四個選項中選出正確的和弦或單音。答題後可重播選項，猜和弦模式也能查看樂理分析。'
+                    : 'Listen to the prompt, then choose the correct chord or note from four options. After answering, replay options and open theory notes in chord mode.'}
+                </p>
+              </section>
+
+              <section>
+                <h3 style={{ fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '6px' }}>
+                  {language === 'zh' ? '實音挑戰' : 'LIVE CHALLENGE'}
+                </h3>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {language === 'zh'
+                    ? '允許麥克風權限後，依照畫面指定的和弦在吉他上彈奏。系統會用音高分布判斷符合度，達標後自動進入下一題。'
+                    : 'Allow microphone access, then play the displayed chord on guitar. The app checks the pitch profile and advances when the match is high enough.'}
+                </p>
+              </section>
+
+              <section>
+                <h3 style={{ fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '6px' }}>
+                  {language === 'zh' ? '多人對戰' : 'MULTIPLAYER'}
+                </h3>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {language === 'zh'
+                    ? '建立房間或輸入房號加入朋友的房間。每題先選答案，再按同一個選項確認；答對且越快，分數越高。'
+                    : 'Create a room or join with a room code. Select an answer, then tap the same option again to lock it in. Faster correct answers score more.'}
+                </p>
+              </section>
+
+              <section>
+                <h3 style={{ fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '6px' }}>
+                  {language === 'zh' ? '小提醒' : 'TIPS'}
+                </h3>
+                <p style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>
+                  {language === 'zh'
+                    ? '開始前請先開啟聲音。實音挑戰建議在安靜環境中使用，並讓每次彈奏的聲音清楚延續。'
+                    : 'Turn on sound before playing. For Live Challenge, use a quiet room and let each chord ring clearly.'}
+                </p>
+              </section>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Inning counter */}
       <div style={{ marginTop: '32px', display: 'flex', justifyContent: 'center', gap: '8px' }}>

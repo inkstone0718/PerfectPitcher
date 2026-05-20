@@ -7,6 +7,15 @@ import { initAudio, playChord, playNote } from '../utils/audioEngine';
 import type { Language } from '../App';
 import type { Room } from './MultiplayerLobbyScreen';
 
+import { PitchingAnimation } from './PitchingAnimation';
+import { StaticPitcher } from './StaticPitcher';
+import { BattingAnimation } from './BattingAnimation';
+import { StaticBatter } from './StaticBatter';
+import { CatchingAnimation } from './CatchingAnimation';
+import { StaticCatcher } from './StaticCatcher';
+import { UmpireAnimation } from './UmpireAnimation';
+import { StaticUmpire } from './StaticUmpire';
+
 type GameItem = { name: string; notes: string[] };
 
 type Props = {
@@ -29,6 +38,9 @@ export const MultiplayerGameScreen: React.FC<Props> = ({ language, roomId, playe
   const [revealed, setRevealed] = useState(false);
   const [timeLeft, setTimeLeft] = useState(15);
   const [isFinished, setIsFinished] = useState(false);
+  const [isPitching, setIsPitching] = useState(false);
+  const [delayedAnimState, setDelayedAnimState] = useState<'idle' | 'strike' | 'ball'>('idle');
+  const [delayedIsPitching, setDelayedIsPitching] = useState(false);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const hasConfirmedRef = useRef(false);
@@ -71,6 +83,9 @@ export const MultiplayerGameScreen: React.FC<Props> = ({ language, roomId, playe
     setHoveredAnswer(null);
     setConfirmedAnswer(null);
     setRevealed(false);
+    setIsPitching(false);
+    setDelayedAnimState('idle');
+    setDelayedIsPitching(false);
 
     const correctName = room.currentAnswer;
 
@@ -219,6 +234,16 @@ export const MultiplayerGameScreen: React.FC<Props> = ({ language, roomId, playe
     if (hasConfirmedRef.current || revealed) return;
     hasConfirmedRef.current = true;
     setConfirmedAnswer(item.name);
+    
+    // Trigger animation on confirm
+    const isCorrect = item.name === room?.currentAnswer;
+    setIsPitching(true);
+
+    setTimeout(() => {
+      setDelayedAnimState(isCorrect ? 'strike' : 'ball');
+      setDelayedIsPitching(true);
+    }, 400);
+
     await update(ref(db, `rooms/${roomId}/answers`), {
       [playerId]: { answer: item.name, time: Date.now() - (room?.questionStartTime ?? 0) },
     });
@@ -309,6 +334,57 @@ export const MultiplayerGameScreen: React.FC<Props> = ({ language, roomId, playe
           </span>
         </div>
       )}
+
+      {/* Animation Scene */}
+      <div className="animation-container" style={{ padding: '0 15px', height: '100px', marginBottom: '20px' }}>
+        <div className="anim-character" style={{ zIndex: 2 }}>
+          {isPitching ? (
+            <PitchingAnimation 
+              isPlaying={isPitching} 
+              width={80}
+              height={88}
+              onAnimationEnd={() => setIsPitching(false)}
+            />
+          ) : (
+            <StaticPitcher width={80} height={88} frameIndex={1} />
+          )}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '4px', zIndex: 2 }}>
+          <div className="anim-character anim-batter" style={{ animationDelay: '0.2s' }}>
+            {delayedAnimState === 'strike' ? (
+              <BattingAnimation isPlaying={true} width={80} height={88} />
+            ) : (
+              <StaticBatter width={80} height={88} frameIndex={0} className="batter-breathe" />
+            )}
+          </div>
+          <div className="anim-character" style={{ animationDelay: '0.4s' }}>
+            {delayedIsPitching ? (
+              <CatchingAnimation isPlaying={true} width={70} height={80} onAnimationEnd={() => setDelayedIsPitching(false)} />
+            ) : (
+              <StaticCatcher width={70} height={80} frameIndex={0} className="catcher-breathe" />
+            )}
+          </div>
+          <div className="anim-character" style={{ animationDelay: '0.6s' }}>
+            {delayedAnimState !== 'idle' ? (
+              <UmpireAnimation 
+                isPlaying={true} 
+                type={delayedAnimState === 'strike' ? 'strike' : 'ball'} 
+                width={75} 
+                height={82} 
+              />
+            ) : (
+              <StaticUmpire width={75} height={82} frameIndex={0} className="umpire-breathe" />
+            )}
+          </div>
+        </div>
+        {delayedAnimState !== 'idle' && (
+          <div className={`anim-result-text show`} style={{ color: delayedAnimState === 'strike' ? 'var(--success)' : 'var(--error)' }}>
+            {delayedAnimState === 'strike' 
+               ? (language === 'zh' ? '好球！揮空！' : 'STRIKE!') 
+               : (language === 'zh' ? '壞球！' : 'BALL!')}
+          </div>
+        )}
+      </div>
 
       {/* Play button */}
       <button className="btn btn-play" onClick={() => {

@@ -2,13 +2,15 @@ import React, { useEffect, useRef, useState } from 'react';
 
 interface SpriteAnimatorProps {
   spriteSheet: string;
-  frameWidth: number;
-  frameHeight: number;
+  frameWidth: number;   // Original frame width in pixels
+  frameHeight: number;  // Original frame height in pixels
   totalFrames: number;
-  frameDuration: number;
+  frameDuration: number | number[]; // Support array of durations
   isPlaying: boolean;
+  width: number;        // Display width
+  height: number;       // Display height
+  columns: number;
   className?: string;
-  style?: React.CSSProperties;
   onEnd?: () => void;
 }
 
@@ -19,102 +21,95 @@ export const SpriteAnimator: React.FC<SpriteAnimatorProps> = ({
   totalFrames,
   frameDuration,
   isPlaying,
+  width,
+  height,
+  columns,
   className,
-  style,
   onEnd
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement | null>(null);
-  const animationRef = useRef<number | null>(null);
   const [currentFrame, setCurrentFrame] = useState(0);
+  const timerRef = useRef<number | null>(null);
+  const onEndRef = useRef(onEnd);
 
+  // Keep onEndRef in sync with the latest onEnd callback
   useEffect(() => {
-    const img = new Image();
-    img.src = spriteSheet;
-    img.onload = () => {
-      imageRef.current = img;
-      drawFrame(0);
-    };
-  }, [spriteSheet]);
+    onEndRef.current = onEnd;
+  }, [onEnd]);
 
-  const drawFrame = (frameIndex: number) => {
-    const canvas = canvasRef.current;
-    const img = imageRef.current;
-    if (!canvas || !img) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, frameWidth, frameHeight);
-
-    // Calculate source position (assuming frames are arranged horizontally)
-    const columns = Math.ceil(Math.sqrt(totalFrames));
-    const sourceX = (frameIndex % columns) * frameWidth;
-    const sourceY = Math.floor(frameIndex / columns) * frameHeight;
-
-    // Draw the specific frame
-    ctx.drawImage(
-      img,
-      sourceX,
-      sourceY,
-      frameWidth,
-      frameHeight,
-      0,
-      0,
-      frameWidth,
-      frameHeight
-    );
-  };
+  // Create a stable string representation for the duration if it's an array
+  const durationKey = Array.isArray(frameDuration)
+    ? frameDuration.join(',')
+    : String(frameDuration);
 
   useEffect(() => {
     if (!isPlaying) {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-        animationRef.current = null;
+      setCurrentFrame(0);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
       }
       return;
     }
 
-    let startTime: number | null = null;
+    const durations = Array.isArray(frameDuration)
+      ? frameDuration
+      : Array(totalFrames).fill(frameDuration);
 
-    const animate = (timestamp: number) => {
-      if (!startTime) startTime = timestamp;
+    const totalDuration = durations.reduce((a, b) => a + b, 0);
+    const minDuration = Math.min(...durations);
+
+    const startTime = Date.now();
+    const tick = () => {
+      const elapsed = Date.now() - startTime;
       
-      const elapsed = timestamp - startTime;
-      const frameIndex = Math.floor(elapsed / frameDuration) % totalFrames;
-      
-      if (frameIndex !== currentFrame) {
-        setCurrentFrame(frameIndex);
-        drawFrame(frameIndex);
-        
-        // Check if animation completed - end on last frame (15 for 16 frames)
-        if (frameIndex === totalFrames - 1) {
-          onEnd?.();
-          // Stop animation by not calling requestAnimationFrame again
-          return;
+      let frameIndex = 0;
+      let accumulated = 0;
+      for (let i = 0; i < totalFrames; i++) {
+        accumulated += durations[i];
+        if (elapsed < accumulated) {
+          frameIndex = i;
+          break;
+        }
+        if (i === totalFrames - 1) {
+          frameIndex = totalFrames - 1;
         }
       }
-
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
+      
+      if (elapsed >= totalDuration) {
+        setCurrentFrame(totalFrames - 1);
+        onEndRef.current?.();
+        if (timerRef.current) clearInterval(timerRef.current);
+        return;
       }
+      setCurrentFrame(frameIndex);
     };
-  }, [isPlaying, frameDuration, totalFrames, onEnd]);
+
+    timerRef.current = window.setInterval(tick, Math.max(10, minDuration / 2));
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [isPlaying, durationKey, totalFrames]);
+
+  const rows = Math.ceil(totalFrames / columns);
+  const col = currentFrame % columns;
+  const row = Math.floor(currentFrame / columns);
+
+  // Scaling factor for background-size and position
+  const scaleX = width / frameWidth;
+  const scaleY = height / frameHeight;
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={frameWidth}
-      height={frameHeight}
+    <div
       className={className}
-      style={style}
+      style={{
+        width: `${width}px`,
+        height: `${height}px`,
+        backgroundImage: `url(${spriteSheet})`,
+        backgroundSize: `${frameWidth * columns * scaleX}px ${frameHeight * rows * scaleY}px`,
+        backgroundPosition: `-${col * frameWidth * scaleX}px -${row * frameHeight * scaleY}px`,
+        backgroundRepeat: 'no-repeat',
+        imageRendering: 'pixelated',
+      }}
     />
   );
 };

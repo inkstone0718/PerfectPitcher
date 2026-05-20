@@ -1,20 +1,20 @@
 import React from 'react';
 
-interface StaticPitcherProps {
+interface StaticBatterProps {
   width?: number;
   height?: number;
   className?: string;
   frameIndex?: number;
 }
 
-export const StaticPitcher: React.FC<StaticPitcherProps> = ({
+export const StaticBatter: React.FC<StaticBatterProps> = ({
   width = 80,
-  height = 88, // Default proportional to 234:256
+  height = 88, 
   className,
-  frameIndex = 1
+  frameIndex = 0
 }) => {
-  const spriteSheet = '/PitchingFramesTransparent.png';
-  const frameWidth = 704;
+  const spriteSheet = '/BattingFramesTransparent.png';
+  const frameWidth = 703;
   const frameHeight = 768;
   const cols = 4;
   const rows = 2;

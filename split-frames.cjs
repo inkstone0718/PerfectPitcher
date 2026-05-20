@@ -4,14 +4,14 @@ const { createCanvas, loadImage } = require('canvas');
 async function splitPitchingFrames() {
   try {
     // Load the sprite sheet
-    const spriteSheet = await loadImage('./public/PitchingFrames.png');
+    const spriteSheet = await loadImage('./public/pitchingFrames04.png');
     
     // Configuration
     const FRAME_WIDTH = 704;
-    const FRAME_HEIGHT = 384;
+    const FRAME_HEIGHT = 768;
     const COLS = 4;
-    const ROWS = 4;
-    const TOTAL_FRAMES = 16;
+    const ROWS = 2;
+    const TOTAL_FRAMES = 8;
     
     // Create output directory
     const outputDir = './public/pitching-frames';

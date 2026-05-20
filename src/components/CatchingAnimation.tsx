@@ -1,7 +1,7 @@
 import React from 'react';
 import { SpriteAnimator } from './SpriteAnimator';
 
-interface PitchingAnimationProps {
+interface CatchingAnimationProps {
   isPlaying: boolean;
   onAnimationEnd?: () => void;
   width?: number;
@@ -9,26 +9,25 @@ interface PitchingAnimationProps {
   className?: string;
 }
 
-const PITCHING_DURATIONS = [100, 100, 100, 50, 50, 50, 50, 50];
-
-export const PitchingAnimation: React.FC<PitchingAnimationProps> = ({
+export const CatchingAnimation: React.FC<CatchingAnimationProps> = ({
   isPlaying,
   onAnimationEnd,
-  width = 80,
-  height = 88,
+  width = 70,
+  height = 80,
   className
 }) => {
-  const frameWidth = 704;
-  const frameHeight = 768;
-  const totalFrames = 8; 
+  const frameWidth = 542;
+  const frameHeight = 616;
+  const totalFrames = 4;
+  const frameDuration = 80; 
 
   return (
     <SpriteAnimator
-      spriteSheet="/PitchingFramesTransparent.png"
+      spriteSheet="/CatchingFramesTransparent.png"
       frameWidth={frameWidth}
       frameHeight={frameHeight}
       totalFrames={totalFrames}
-      frameDuration={PITCHING_DURATIONS}
+      frameDuration={frameDuration}
       isPlaying={isPlaying}
       columns={4}
       width={width}

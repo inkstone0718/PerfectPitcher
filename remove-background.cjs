@@ -6,67 +6,106 @@ async function removeBackground() {
     const inputDir = './public/pitching-frames';
     const outputDir = './public/pitching-frames-transparent';
     
-    // Create output directory
     if (!fs.existsSync(outputDir)) {
       fs.mkdirSync(outputDir, { recursive: true });
     }
     
-    // Process each frame
-    for (let i = 1; i <= 16; i++) {
+    for (let i = 1; i <= 8; i++) {
       const filename = `pitching-frame-${String(i).padStart(2, '0')}.png`;
       const inputPath = `${inputDir}/${filename}`;
       const outputPath = `${outputDir}/${filename}`;
       
-      // Load the original frame
       const image = await loadImage(inputPath);
-      
-      // Create canvas
       const canvas = createCanvas(image.width, image.height);
       const ctx = canvas.getContext('2d');
-      
-      // Draw the image
       ctx.drawImage(image, 0, 0);
       
-      // Get image data
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       const data = imageData.data;
+      const width = canvas.width;
+      const height = canvas.height;
       
-      // Background color to remove (assuming white/light background)
-      // You may need to adjust these values based on your actual background color
-      const backgroundColor = { r: 255, g: 255, b: 255 };
-      const tolerance = 30; // Color matching tolerance
+      const samples = [];
+      // Top and bottom edges
+      for (let x = 0; x < width; x += Math.max(1, Math.floor(width / 20))) {
+        samples.push([x, 0]);
+        samples.push([x, height - 1]);
+      }
+      // Left and right edges
+      for (let y = 0; y < height; y += Math.max(1, Math.floor(height / 20))) {
+        samples.push([0, y]);
+        samples.push([width - 1, y]);
+      }
+
+      const bgColorsSet = new Set();
+      const bgColors = [];
       
-      // Process each pixel
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i];
-        const g = data[i + 1];
-        const b = data[i + 2];
+      samples.forEach(([sx, sy]) => {
+        const idx = (sy * width + sx) * 4;
+        const colorKey = `${data[idx]},${data[idx+1]},${data[idx+2]}`;
+        if (!bgColorsSet.has(colorKey)) {
+          bgColorsSet.add(colorKey);
+          bgColors.push({ r: data[idx], g: data[idx+1], b: data[idx+2] });
+        }
+      });
+
+      const tolerance = 45; // Increased tolerance slightly
+
+      function isBg(r, g, b) {
+        // Character is likely not gray if background is gray squares
+        // But let's check against our sampled bg colors
+        return bgColors.some(bg => 
+          Math.abs(r - bg.r) <= tolerance && 
+          Math.abs(g - bg.g) <= tolerance && 
+          Math.abs(b - bg.b) <= tolerance
+        );
+      }
+
+      const visited = new Uint8Array(width * height);
+      const queue = [];
+
+      // Start flood fill from all sample points that match background
+      samples.forEach(([x, y]) => {
+        const idx = y * width + x;
+        if (!visited[idx]) {
+          const pIdx = idx * 4;
+          if (isBg(data[pIdx], data[pIdx+1], data[pIdx+2])) {
+            queue.push([x, y]);
+            visited[idx] = 1;
+          }
+        }
+      });
+
+      let head = 0;
+      while(head < queue.length) {
+        const [cx, cy] = queue[head++];
         
-        // Check if pixel matches background color within tolerance
-        if (
-          Math.abs(r - backgroundColor.r) <= tolerance &&
-          Math.abs(g - backgroundColor.g) <= tolerance &&
-          Math.abs(b - backgroundColor.b) <= tolerance
-        ) {
-          // Make pixel transparent
-          data[i + 3] = 0; // Set alpha to 0
+        const idx = (cy * width + cx) * 4;
+        data[idx + 3] = 0; 
+        
+        const neighbors = [[cx+1, cy], [cx-1, cy], [cx, cy+1], [cx, cy-1]];
+        for (const [nx, ny] of neighbors) {
+          if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+            const nIdx = ny * width + nx;
+            if (!visited[nIdx]) {
+              const npIdx = nIdx * 4;
+              if (isBg(data[npIdx], data[npIdx+1], data[npIdx+2])) {
+                visited[nIdx] = 1;
+                queue.push([nx, ny]);
+              }
+            }
+          }
         }
       }
       
-      // Put the modified image data back
       ctx.putImageData(imageData, 0, 0);
-      
-      // Save the transparent frame
       const buffer = canvas.toBuffer('image/png');
       fs.writeFileSync(outputPath, buffer);
-      
       console.log(`Processed: ${filename}`);
     }
-    
-    console.log(`Successfully removed background from all frames. Output in ${outputDir}/`);
-    
+    console.log(`Success! Background removed with multi-sample flood-fill.`);
   } catch (error) {
-    console.error('Error removing background:', error);
+    console.error('Error:', error);
   }
 }
 
