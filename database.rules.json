@@ -77,6 +77,108 @@
           ".validate": false
         }
       }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+        ".write": "auth != null && auth.uid === $uid",
+        "profile": {
+          ".validate": "newData.hasChildren(['uid', 'displayName', 'email', 'updatedAt']) && newData.child('uid').val() === $uid",
+          "uid": {
+            ".validate": "newData.isString() && newData.val() === $uid"
+          },
+          "displayName": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24 && newData.val().matches(/^[A-Za-z0-9_ .-]+$/)"
+          },
+          "email": {
+            ".validate": "newData.isString() && newData.val().length <= 120"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        },
+        "bestScores": {
+          "$modeKey": {
+            ".validate": "($modeKey === 'chord_basic' || $modeKey === 'chord_advanced' || $modeKey === 'note' || $modeKey === 'live_challenge') && newData.hasChildren(['uid', 'displayName', 'modeKey', 'score', 'total', 'percent', 'timeMs', 'rankScore', 'updatedAt']) && newData.child('uid').val() === $uid && newData.child('modeKey').val() === $modeKey",
+            "uid": {
+              ".validate": "newData.isString() && newData.val() === $uid"
+            },
+            "displayName": {
+              ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24 && newData.val().matches(/^[A-Za-z0-9_ .-]+$/)"
+            },
+            "modeKey": {
+              ".validate": "newData.isString() && newData.val() === $modeKey"
+            },
+            "score": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+            },
+            "total": {
+              ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 500"
+            },
+            "percent": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+            },
+            "timeMs": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600000"
+            },
+            "rankScore": {
+              ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200000000"
+            },
+            "updatedAt": {
+              ".validate": "newData.isNumber() && newData.val() > 0"
+            },
+            "$other": {
+              ".validate": false
+            }
+          }
+        },
+        "$other": {
+          ".validate": false
+        }
+      }
+    },
+    "leaderboards": {
+      "$modeKey": {
+        ".read": "$modeKey === 'chord_basic' || $modeKey === 'chord_advanced' || $modeKey === 'note' || $modeKey === 'live_challenge'",
+        ".indexOn": ["rankScore"],
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid && ($modeKey === 'chord_basic' || $modeKey === 'chord_advanced' || $modeKey === 'note' || $modeKey === 'live_challenge')",
+          ".validate": "newData.hasChildren(['uid', 'displayName', 'modeKey', 'score', 'total', 'percent', 'timeMs', 'rankScore', 'updatedAt']) && newData.child('uid').val() === $uid && newData.child('modeKey').val() === $modeKey",
+          "uid": {
+            ".validate": "newData.isString() && newData.val() === $uid"
+          },
+          "displayName": {
+            ".validate": "newData.isString() && newData.val().length > 0 && newData.val().length <= 24 && newData.val().matches(/^[A-Za-z0-9_ .-]+$/)"
+          },
+          "modeKey": {
+            ".validate": "newData.isString() && newData.val() === $modeKey"
+          },
+          "score": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500"
+          },
+          "total": {
+            ".validate": "newData.isNumber() && newData.val() > 0 && newData.val() <= 500"
+          },
+          "percent": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+          },
+          "timeMs": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 3600000"
+          },
+          "rankScore": {
+            ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 200000000"
+          },
+          "updatedAt": {
+            ".validate": "newData.isNumber() && newData.val() > 0"
+          },
+          "$other": {
+            ".validate": false
+          }
+        }
+      }
     }
   }
 }

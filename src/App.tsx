@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { onAuthStateChanged, signInWithPopup, signOut, type User } from 'firebase/auth';
 import { HomeScreen } from './components/HomeScreen';
 import { GameScreen } from './components/GameScreen';
 import { ResultScreen } from './components/ResultScreen';
@@ -10,6 +11,8 @@ import { MultiplayerLobbyScreen } from './components/MultiplayerLobbyScreen';
 import { MultiplayerGameScreen } from './components/MultiplayerGameScreen';
 import { type ChallengeConfig } from './utils/challengeEngine';
 import { initAudio } from './utils/audioEngine';
+import { auth, googleProvider } from './utils/firebase';
+import { getSoloModeKey } from './utils/playerStats';
 import './App.css';
 
 export type GameMode = 'chord' | 'note' | 'challenge';
@@ -43,6 +46,20 @@ function App() {
   const [multiplayerRoomId, setMultiplayerRoomId] = useState('');
   const [multiplayerPlayerId, setMultiplayerPlayerId] = useState('');
   const [multiplayerPlayerName, setMultiplayerPlayerName] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    return onAuthStateChanged(auth, setUser);
+  }, []);
+
+  const handleSignIn = async () => {
+    await signInWithPopup(auth, googleProvider);
+  };
+
+  const handleSignOut = async () => {
+    await signOut(auth);
+  };
+
   const handleStart = async (mode: GameMode) => {
     await initAudio(); // Initialize Web Audio API on user gesture
     setGameMode(mode);
@@ -105,13 +122,13 @@ function App() {
 
   return (
     <div className="app-container">
-      {gameState === 'home' && <HomeScreen language={language} onStart={handleStart} onStartChallenge={handleStartChallengeSetup} onStartMultiplayer={handleStartMultiplayer} onOpenSettings={handleOpenSettings} />}
+      {gameState === 'home' && <HomeScreen language={language} user={user} onSignIn={handleSignIn} onSignOut={handleSignOut} onStart={handleStart} onStartChallenge={handleStartChallengeSetup} onStartMultiplayer={handleStartMultiplayer} onOpenSettings={handleOpenSettings} />}
       {gameState === 'settings' && <SettingsScreen language={language} theme={theme} onLanguageChange={setLanguage} onThemeChange={setTheme} onBack={handleHome} />}
       {gameState === 'guessSetup' && <GuessSetupScreen language={language} mode={gameMode as 'chord' | 'note'} onStart={handleStartGuess} onBack={handleHome} />}
       {gameState === 'challengeSetup' && <ChallengeSetupScreen language={language} onStart={handleStartChallenge} onBack={handleHome} />}
       {gameState === 'playing' && gameMode !== 'challenge' && <GameScreen language={language} mode={gameMode} onGameOver={handleGameOver} onBack={handleHome} includeAdvanced={includeAdvancedChords} />}
       {gameState === 'playing' && gameMode === 'challenge' && challengeConfig && <ChallengeGameScreen language={language} config={challengeConfig} onGameOver={handleGameOver} onBack={handleHome} />}
-      {gameState === 'result' && <ResultScreen language={language} score={score} total={totalQuestions} timeMs={challengeTime} onRestart={handleRestart} onHome={handleHome} />}
+      {gameState === 'result' && <ResultScreen language={language} user={user} modeKey={getSoloModeKey(gameMode, includeAdvancedChords)} score={score} total={totalQuestions} timeMs={challengeTime} onSignIn={handleSignIn} onRestart={handleRestart} onHome={handleHome} />}
       {gameState === 'multiplayerLobby' && <MultiplayerLobbyScreen language={language} onGameStart={handleMultiplayerGameStart} onBack={handleHome} />}
       {gameState === 'multiplayerGame' && <MultiplayerGameScreen language={language} roomId={multiplayerRoomId} playerId={multiplayerPlayerId} playerName={multiplayerPlayerName} onBack={handleHome} onBackToRoom={handleBackToRoom} />}
     </div>

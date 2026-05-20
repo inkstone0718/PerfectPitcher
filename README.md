@@ -8,6 +8,8 @@ PerfectPitcher is a baseball-themed ear training game for guitar learners. It tu
   - Chord quiz: listen to a guitar chord and pick the correct answer.
   - Note quiz: listen to a single pitch and identify the note.
   - Chord analysis: review chord tones and short theory notes after answering.
+  - Google sign-in saves personal best records.
+  - Global leaderboard ranks solo records by mode.
 
 - **Live Challenge**
   - Uses the microphone to analyze guitar input in real time.
@@ -35,6 +37,7 @@ PerfectPitcher is a baseball-themed ear training game for guitar learners. It tu
 - Tone.js / Soundfont Player
 - Meyda
 - Firebase Realtime Database
+- Firebase Authentication
 - Lucide React
 - Canvas Confetti
 
@@ -72,6 +75,7 @@ npm run preview
 2. Select **Chord Quiz** or **Note Quiz**.
 3. Listen to the prompt and choose the correct option.
 4. In chord mode, open the theory analysis after answering to review the chord tones.
+5. Sign in with Google to save your best score and appear on the global leaderboard.
 
 ### Live Challenge
 
@@ -102,6 +106,7 @@ src/
     chords.ts          Chord data, tabs, and theory descriptions
     firebase.ts        Firebase Realtime Database setup
     notes.ts           Note quiz data
+    playerStats.ts     Google-authenticated solo records and leaderboard helpers
 public/                Sprite sheets and game assets
 ```
 
@@ -109,9 +114,9 @@ public/                Sprite sheets and game assets
 
 - Live Challenge requires browser microphone permission.
 - Audio playback must be started from a user gesture, so the app initializes audio after the player starts a mode.
-- Firebase Realtime Database rules deny root-level access and only allow validated room data under `rooms/{ROOM_CODE}`.
+- Firebase Realtime Database rules deny root-level access, validate multiplayer room data, and require Google-authenticated users to write personal records.
 - The project currently stores Firebase configuration in the client bundle, which is acceptable for Firebase client apps when database rules are properly secured.
-- For stronger production security, add Firebase Authentication so room hosts and players can be authorized by identity, not only by validated data shape.
+- Multiplayer rooms currently use structure validation without per-player identity enforcement. For stronger production security, extend Firebase Authentication into multiplayer room writes too.
 
 ## Future Improvements
 
